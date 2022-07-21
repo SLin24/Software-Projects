@@ -1,6 +1,6 @@
 package com.team254.devboard;
 
-import com.team254.lib.drivers.Subsystem;
+import com.team254.devboard.subsystems.Subsystem;
 import com.team254.lib.loops.ILooper;
 import com.team254.lib.loops.Loop;
 import com.team254.lib.loops.Looper;
