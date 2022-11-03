@@ -1,3 +1,6 @@
+package com.team254.lib.util;
+import edu.wpi.first.wpilibj.Timer;
+
 public class PIDF {
     final double kP;
     final double kI;
@@ -15,15 +18,13 @@ public class PIDF {
 
     // initializes gains, and defines a setpoint (assuming setPoint is constant)
     // note that steadyStateQualRange should be a positive value
-    public PIDF(double kP, double kI, double kD, double setPoint, double refPoint, double curTime, double steadyStateQualRange) {
+    public PIDF(double kP, double kI, double kD, double steadyStateQualRange) {
         this.kP = kP;
         this.kI = kI;
         this.kD = kD;
         this.kSteadyStateQualRange = steadyStateQualRange;
-        this.setPoint = setPoint;
-        this.refPoint = refPoint;
-        this.prevError = setPoint - refPoint;
-        this.prevTime = curTime;
+        this.prevTime = Timer.getFPGATimestamp();
+        this.prevError = 0.0;
     }
 
     void setArbitraryFF(double val) {
@@ -47,11 +48,15 @@ public class PIDF {
         return this.kF;
     }
 
-    double update(double newRefPoint, double curTime) {
-        double output = 0;
+    void setSetPoint(double setPoint) {
+        this.setPoint = setPoint;
+    }
+
+    double update(double curRefPoint) {
+        double curTime = Timer.getFPGATimestamp();
         double deltaTime = curTime - this.prevTime;
         // updating the reference point, and calculating new error
-        this.refPoint = newRefPoint;
+        this.refPoint = curRefPoint;
         this.curError = this.setPoint - this.refPoint;
 
         double proportionalTerm = this.kP * this.curError;
@@ -62,13 +67,13 @@ public class PIDF {
         // integral term will be 0 unless in steady state
 
         // checking for steady state
-        if (Math.abs(this.prevError) < this.kSteadyStateQualRange) {
+        if (Math.abs(this.curError) < this.kSteadyStateQualRange) {
             if (this.steadyStateErrorStartTime == -1) {
-                this.steadyStateErrorStartTime = this.prevTime;
+                this.steadyStateErrorStartTime = curTime;
             }
             // note that at each time, a new rectangle is being added
-            // will not be extremely precise, but still relatively accurate if update runs frequently enough, (also because error changes at a slower rate)
-            // using underEstimation for Integrals, to prevent oscillation / overshooting
+            // using overEstimation for Integrals
+            //perhaps better practice to use a variable total_error and multiply by kI for integral term
             this.integralTerm += kI * (deltaTime) * (this.curError);
         }
 
@@ -76,7 +81,7 @@ public class PIDF {
         this.prevTime = curTime;
         this.prevError = this.curError;
 
-        output = proportionalTerm + derivativeTerm + integralTerm;
+        double output = proportionalTerm + derivativeTerm + integralTerm;
 
         return output;
     }
